@@ -1,0 +1,14 @@
+{
+  "dataset_name": "train_users.csv",
+  "k_means_init": "k-means++",
+  "n_init": 10,
+  "random_state": 42,
+  "columns": [
+    "Age",
+    "occupation_encoded",
+    "zipcode_endcoded",
+    "Gender_M",
+    "Gender_F"
+  ],
+  "target": "cluster"
+}

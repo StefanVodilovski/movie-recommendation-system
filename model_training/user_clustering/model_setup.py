@@ -1,10 +1,12 @@
 # pip install pandas scikit-learn numpy
+import json
 import os
 import joblib
 from matplotlib import pyplot as plt
 import numpy as np
 import pandas as pd
 from sklearn.calibration import LabelEncoder
+from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
 from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
@@ -53,10 +55,10 @@ def scale_numeric_columns(
     print("Scaling numeric columns...")
     scaler = StandardScaler()
     for column in numeric_columns:
-        df[column] = scaler.fit_transform(df[column])
-        scalars_dir = os.path.join(save_path, "scalaras")
+        df[column] = scaler.fit_transform(df[[column]]).flatten()
+        scalars_dir = os.path.join(save_path, "scalars")
         os.makedirs(scalars_dir, exist_ok=True)
-        scaler_file = os.path.join(save_path, f"{column}_numeric_columns_scaler.pkl")
+        scaler_file = os.path.join(scalars_dir, f"{column}_numeric_columns_scaler.pkl")
         joblib.dump(scaler, scaler_file)
         print(f"Numeric column scaler saved to {scaler_file}")
     return df
@@ -67,7 +69,7 @@ def data_preprocessing(df: pd.DataFrame, save_path: str) -> pd.DataFrame:
     df = encode_labels(
         df,
         ["Zip-code", "Occupation"],
-        ["occupation_encoded", "zipcode_endcoded"],
+        ["zipcode_endcoded", "occupation_encoded"],
         save_path,
     )
     df = pd.get_dummies(
@@ -117,8 +119,14 @@ def plot_clustering_results(
     plt.close()
 
 
-def save_best_model(
-    excperiment_config: ExperimentConfig,
+def save_model_config(save_path: str, experiment_config: ExperimentConfig):
+    with open(os.path.join(save_path, "experiment_config.json"), "w") as f:
+        json.dump(experiment_config.model_dump(), f, indent=2)
+    print("Model and config saved Successfully.")
+
+
+def save_best_model_and_config(
+    experiment_config: ExperimentConfig,
     save_path: str,
     K_range: range,
     silhouette_list: list[float],
@@ -127,34 +135,35 @@ def save_best_model(
     best_k = K_range[silhouette_list.index(max(silhouette_list))]  # highest silhouette
     kmeans_final = KMeans(
         n_clusters=best_k,
-        init=excperiment_config.k_means_init,
-        n_init=excperiment_config.n_init,
-        random_state=excperiment_config.random_state,
+        init=experiment_config.k_means_init,
+        n_init=experiment_config.n_init,
+        random_state=experiment_config.random_state,
     )
     kmeans_final.fit(df)
-    model_save_path = save_path / f"kmeans_users_{best_k}_clusters.joblib"
+    model_save_path = f"{save_path}/kmeans_users_{best_k}_clusters.joblib"
     joblib.dump(kmeans_final, model_save_path)
 
     print(f"Best K found: {best_k} with Silhouette Score: {max(silhouette_list)}")
-    df["cluster"] = kmeans_final.labels_
-    datasets_path = "../../datasets/"
-    df.to_csv(datasets_path / "users_with_clusters.csv", index=False)
+    df[experiment_config.target] = kmeans_final.labels_
+    datasets_path = "../../datasets/users_with_clusters.csv"
+    df.to_csv(datasets_path, index=False)
+    save_model_config(save_path, experiment_config)
 
 
 def train_and_save_k_means(
-    excperiment_config: ExperimentConfig, df: pd.DataFrame, save_path: str
+    experiment_config: ExperimentConfig, df: pd.DataFrame, save_path: str
 ) -> None:
     print("Training K-Means clustering...")
     inertia_list = []
     silhouette_list = []
-    K_range = range(2, 11)
+    K_range = range(2, 15)
 
     for k in K_range:
         kmeans = KMeans(
             n_clusters=k,
-            init=excperiment_config.k_means_init,
-            n_init=excperiment_config.n_init,
-            random_state=excperiment_config.random_state,
+            init=experiment_config.k_means_init,
+            n_init=experiment_config.n_init,
+            random_state=experiment_config.random_state,
         )
         kmeans.fit(df)
         inertia_list.append(kmeans.inertia_)
@@ -164,7 +173,31 @@ def train_and_save_k_means(
         )
 
     plot_clustering_results(save_path, K_range, inertia_list, silhouette_list)
-    save_best_model(excperiment_config, save_path, K_range, silhouette_list)
+    save_best_model_and_config(experiment_config, save_path, K_range, silhouette_list)
+
+
+def plot_clusters_pca(
+    experiment_config: ExperimentConfig, df: pd.DataFrame, save_path: str
+):
+    pca = PCA(n_components=2)
+    components = pca.fit_transform(df[experiment_config.columns])
+
+    plt.figure(figsize=(8, 6))
+    for cluster_id in df[experiment_config.target].unique():
+        cluster_data = components[df[experiment_config.target] == cluster_id]
+        plt.scatter(
+            cluster_data[:, 0],
+            cluster_data[:, 1],
+            label=f"Cluster {cluster_id}",
+            alpha=0.6,
+        )
+
+    plt.xlabel("PCA Component 1")
+    plt.ylabel("PCA Component 2")
+    plt.title("Clusters Visualization (PCA)")
+    plt.legend()
+    plt.savefig(f"{save_path}/visualized_clustering.png", dpi=300)
+    plt.close()
 
 
 if __name__ == "__main__":
@@ -180,5 +213,7 @@ if __name__ == "__main__":
         n_init=10,
         random_state=42,
         columns=numeric_cols + onehot_cols,
+        target="cluster",
     )
     train_and_save_k_means(experiment_config, df, save_path)
+    plot_clusters_pca(experiment_config, df, save_path)
