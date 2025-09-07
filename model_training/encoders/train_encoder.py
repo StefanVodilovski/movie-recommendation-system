@@ -3,6 +3,7 @@ import os
 import joblib
 import pandas as pd
 from sklearn.calibration import LabelEncoder
+from sklearn.discriminant_analysis import StandardScaler
 from sklearn.preprocessing import OneHotEncoder
 
 
@@ -33,24 +34,28 @@ def train_encoder(save_path: str) -> None:
         encoder = LabelEncoder()
     elif ENCODER_TYPE == "onehot":
         encoder = OneHotEncoder()
+    elif ENCODER_TYPE == "scalar":
+        encoder = StandardScaler()
     else:
         raise ValueError("Unsupported encoder type. Use 'label' or 'onehot'.")
 
     df[TARGET_COLUMN] = encoder.fit_transform(df[FEATURE_COLUMN])
-    df[TARGET_COLUMN] = df[FEATURE_COLUMN]
-
     joblib.dump(encoder, save_path + f"/{ENCODER_TYPE}_encoder.pkl")
 
 
 if __name__ == "__main__":
-    DATASET_PATH = "../../datasets/full_test_dataset.csv"
+    DATASET_PATH = "../../datasets/full_train_dataset_with_embeddings.parquet"
     SAVE_MODEL_PATH = "../../experiments/encoders"
-    FEATURE_COLUMN = "original_language"
-    TARGET_COLUMN = "original_language_encoded"
-    DATASET_TYPE = "csv"
+    FEATURE_COLUMN = "Occupation"
+    TARGET_COLUMN = "occupation_encoded"
+
+    DATASET_TYPE = "parquet"
     ENCODER_TYPE = "label"
     df = import_df(DATASET_TYPE, DATASET_PATH)
-    df[FEATURE_COLUMN].dropna(inplace=True)
+    df.dropna(inplace=True)
+    if ENCODER_TYPE == "scalar" and FEATURE_COLUMN == "Timestamp":
+        df[FEATURE_COLUMN] = pd.to_datetime(df[FEATURE_COLUMN], errors="coerce")
+        df[FEATURE_COLUMN] = df[FEATURE_COLUMN].dt.year
     save_path = form_save_path()
     train_encoder(save_path)
     print(f"Encoder trained and saved at {save_path}")

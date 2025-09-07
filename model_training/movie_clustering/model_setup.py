@@ -16,6 +16,7 @@ from sklearn.metrics import silhouette_score
 from configuration import (
     BASE_PATH,
     LABEL_ENCODER_PATH,
+    TIMESTAMP_SCALER_PATH,
     metadata_columns,
     embedding_column,
 )
@@ -55,11 +56,22 @@ def reduce_embedding_size(df: pd.DataFrame, save_path: str) -> np.ndarray:
     return reduced_embeddings
 
 
+def scale_timestamp(
+    df: pd.DataFrame, feature_column: str, target_column: str
+) -> pd.DataFrame:
+    print("Scaling timestamp...")
+    le = joblib.load(TIMESTAMP_SCALER_PATH)
+    df[target_column] = le.transform(df[[feature_column]]).flatten()
+    df = df.drop(columns=[feature_column])
+    return df
+
+
 def data_preprocessing(
     df: pd.DataFrame, save_path: str
 ) -> tuple[pd.DataFrame, np.ndarray]:
     print("Preprocessing data...")
     df = encode_labels(df, "original_language", "original_language_encoded")
+    df = scale_timestamp(df, "Timestamp", "timestamp_encoded")
     reduced_embeddings = reduce_embedding_size(df, save_path)
     return df, reduced_embeddings
 
