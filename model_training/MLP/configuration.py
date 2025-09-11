@@ -21,7 +21,6 @@ genre_cols = [
 ]
 numeric_cols = ["popularity", "vote_average", "vote_count", "original_langage_encoded"]
 user_cols = [
-    "UserID",
     "Age",
     "occupation_encoded",
     "Zipcode_endcoded",

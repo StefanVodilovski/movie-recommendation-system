@@ -1,0 +1,54 @@
+{
+  "dataset_name": "datasets/train_df_with_left_out_user.parquet",
+  "test_size": 0.0,
+  "random_state": 0,
+  "batch_size": 256,
+  "learning_rate": 0.001,
+  "optimizer": "Adam",
+  "loss_function": "mse",
+  "num_epochs": 15,
+  "validation_split": 0.2,
+  "input_vectors": [
+    {
+      "columns": [
+        "Age",
+        "occupation_encoded",
+        "Zipcode_endcoded",
+        "Gender_M",
+        "Gender_F"
+      ]
+    },
+    {
+      "columns": [
+        "Action",
+        "Adventure",
+        "Animation",
+        "Children's",
+        "Comedy",
+        "Crime",
+        "Documentary",
+        "Drama",
+        "Fantasy",
+        "Film-Noir",
+        "Horror",
+        "Musical",
+        "Mystery",
+        "Romance",
+        "Sci-Fi",
+        "Thriller",
+        "War",
+        "Western",
+        "adult"
+      ]
+    },
+    {
+      "columns": [
+        "popularity",
+        "vote_average",
+        "vote_count",
+        "original_langage_encoded"
+      ]
+    }
+  ],
+  "target_column": "Rating"
+}

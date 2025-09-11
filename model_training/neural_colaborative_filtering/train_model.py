@@ -10,6 +10,9 @@ from sklearn.model_selection import train_test_split
 from ExperimentConfig import ExperimentConfig
 import os
 
+import torch
+from torchmetrics.retrieval import RetrievalRecall, RetrievalNormalizedDCG
+
 
 BASE_PATH = "../../experiments/ncf_model"
 MF_DIM = 128
@@ -27,7 +30,9 @@ def form_save_path() -> tuple[str, int]:
     return res, experiment_count + 1
 
 
-def create_ids(df: pd.DataFrame) -> tuple[pd.DataFrame, LabelEncoder, LabelEncoder]:
+def create_ids(
+    df: pd.DataFrame, save_path: str
+) -> tuple[pd.DataFrame, LabelEncoder, LabelEncoder]:
     df["user_key"] = (
         df["Gender"].astype(str)
         + "_"
@@ -40,10 +45,8 @@ def create_ids(df: pd.DataFrame) -> tuple[pd.DataFrame, LabelEncoder, LabelEncod
 
     user_encoder = LabelEncoder()
     df["user_id"] = user_encoder.fit_transform(df["user_key"])
-
     item_encoder = LabelEncoder()
     df["item_id"] = item_encoder.fit_transform(df["MovieID"])
-
     return df, user_encoder, item_encoder
 
 
@@ -158,7 +161,7 @@ def save_model(
 
 
 def train_ncf(df: pd.DataFrame, experiment_config: ExperimentConfig, save_path: str):
-    df, user_encoder, item_encoder = create_ids(df)
+    df, user_encoder, item_encoder = create_ids(df, save_path)
     num_users = df["user_id"].nunique()
     num_items = df["item_id"].nunique()
 
@@ -221,6 +224,50 @@ def validate_and_save_results(model_history, filename: str):
     print("Results validated and saved.")
 
 
+def evaluate_with_torchmetrics(
+    model,
+    test_df: pd.DataFrame,
+    save_path: str,
+    k: int = 10,
+    threshold: float = 4.0,
+):
+    """
+    Evaluate Recall@K and NDCG@K using TorchMetrics.
+    """
+    print("Evaluating ranking metrics with TorchMetrics...")
+
+    # Extract arrays
+    u_test = test_df["user_id"].values
+    i_test = test_df["item_id"].values
+    y_test = test_df["Rating"].values
+
+    # Predict with Keras model
+    y_pred = model.predict([u_test, i_test], batch_size=512).flatten()
+
+    # Binary relevance (1 if rating >= threshold else 0)
+    y_true_binary = (y_test >= threshold).astype(int)
+
+    # Convert to torch tensors
+    preds = torch.tensor(y_pred, dtype=torch.float32)
+    target = torch.tensor(y_true_binary, dtype=torch.int32)
+    indexes = torch.tensor(u_test, dtype=torch.long)  # must be long!
+
+    # Define metrics
+    recall_metric = RetrievalRecall(top_k=k)
+    ndcg_metric = RetrievalNormalizedDCG(top_k=k)
+
+    recall10 = recall_metric(preds, target, indexes=indexes).item()
+    ndcg10 = ndcg_metric(preds, target, indexes=indexes).item()
+
+    evaluation = {"Recall@10": recall10, "NDCG@10": ndcg10}
+    with open(f"{save_path}/evaluation_metrics.json", "w") as f:
+        json.dump(evaluation, f)
+
+    print(f"Recall@{k}: {recall10:.4f}")
+    print(f"NDCG@{k}: {ndcg10:.4f}")
+    return recall10, ndcg10
+
+
 if __name__ == "__main__":
     df = pd.read_parquet("../../datasets/full_train_dataset_with_embeddings.parquet")
 
@@ -241,3 +288,7 @@ if __name__ == "__main__":
         df, experiment_config, base_save_path
     )
     validate_and_save_results(history, f"{base_save_path}/training_validation_rmse.png")
+    _, test = train_test_split(df, test_size=0.2, random_state=42)
+    recall, ndcg = evaluate_with_torchmetrics(
+        model, test, base_save_path, k=10, threshold=4.0
+    )
