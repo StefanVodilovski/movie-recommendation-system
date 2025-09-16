@@ -1,0 +1,53 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+build/
+develop-eggs/
+dist/
+eggs/
+.eggs/
+*.egg-info/
+.installed.cfg
+*.manifest
+*.spec
+
+# Editor/IDE specific files
+.vscode/
+.idea/
+*.swp
+*~
+.DS_Store
+Thumbs.db
+
+# FastAPI specific
+.mypy_cache/
+.pytest_cache/
+htmlcov/
+.coverage
+.env
+.env.*
+instance/
+
+# Logs and temporary files
+*.log
+tmp/
+temp/
+
+# Database files (if using SQLite or similar)
+*.db
+*.sqlite
+*.sqlite3
+
+# Uploaded files (if your application handles file uploads)
+uploads/
+
+# Configuration files with sensitive information
+config.ini
+.flaskenv
+.secrets.toml

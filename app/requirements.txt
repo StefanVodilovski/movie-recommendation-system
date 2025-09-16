@@ -1,0 +1,16 @@
+fastapi
+uvicorn
+sqlalchemy
+python-dotenv
+pydantic
+psycopg2
+pandas
+transformers==4.42.4
+sentence-transformers==5.0.0
+huggingface-hub==0.33.4
+numpy
+tensorflow
+nvidia-ml-py
+keras==3.10.0
+tf-keras==2.19.0
+joblib
