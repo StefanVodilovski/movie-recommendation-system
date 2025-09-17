@@ -1,13 +1,17 @@
 from fastapi import Depends, HTTPException
+from sqlalchemy import create_engine
 
-from app.ml.mlp_predictor import predict_mlp
-from app.ml.ncf_predictor import predict_ncf
+from app.ml.mlp_predictor import predict_mlp, prepare_mlp_inputs
+from app.ml.ncf_predictor import predict_ncf, prepare_ncf_inputs
 from app.repository.movie_repository import MovieRepository, get_movie_repository
 from app.repository.rating_repository import RatingRepository, get_rating_repository
 from app.repository.recommend_repository import RecommendRepository, get_recommend_repository
 from app.repository.user_repository import UserRepository, get_user_repository
 from app.schemas.recommend import RecommendationSchema, RecommendationsResponse
 from app.utils.model_weights import get_model_weights
+from app.config.settings import settings
+
+engine = create_engine(settings.DATABASE_URL)
 
 
 class RecommendService:
@@ -49,22 +53,19 @@ class RecommendService:
 
         w_mlp, w_ncf = get_model_weights(num_ratings)
 
-        recommendations = []
+        movies_df, u_mat, m_mat, e_mat = prepare_mlp_inputs(engine, user)
+        mlp_preds = predict_mlp([u_mat, m_mat, e_mat])
+        movies_df["mlp_score"] = mlp_preds
 
-        for movie in movies:
-            mlp_score = predict_mlp(user, movie)
-            ncf_score = predict_ncf(user, movie)
+        user_idx_array, movie_idx_array = prepare_ncf_inputs(user, movies_df)
+        ncf_preds = predict_ncf(user_idx_array, movie_idx_array)
+        movies_df["ncf_score"] = ncf_preds
 
-            weighted_score = w_mlp * mlp_score + w_ncf * ncf_score
+        movies_df["score"] = w_mlp * movies_df["mlp_score"] + w_ncf * movies_df["ncf_score"]
 
-            recommendations.append({
-                "movie_id": movie.id,
-                "name": movie.name,
-                "score": weighted_score
-            })
+        top_movies = movies_df.nlargest(10, "score")
 
-        recommendations = sorted(recommendations, key=lambda x: x["score"], reverse=True)[:10]
-
+        recommendations = top_movies[["movie_id", "name", "score"]].to_dict(orient="records")
         self.recommend_repo.save(user_id, recommendations)
 
         return RecommendationsResponse(

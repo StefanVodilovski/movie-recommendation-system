@@ -1,20 +1,21 @@
+import os
+
 import joblib
 import keras
-import os
-import tensorflow as tf
 import numpy as np
+import pandas as pd
+import tensorflow as tf
 
-from app.db.models.movie import Movie
 from app.db.models.user import User
-from app.utils.extend_encoder import extend_encoder
 
 path = os.path.dirname(__file__)
 
-NCF_MODEL_PATH = os.path.join(path, "ncf", "experiment_21/model.keras")
+NCF_MODEL_PATH = os.path.join(path, "ncf", "experiment_7/model.keras")
 
-encoders = joblib.load(os.path.join(path, "ncf", "experiment_21", "encoders", "user_and_movies_encoders.pkl"))
+encoders = joblib.load(os.path.join(path, "ncf", "experiment_7", "encoders", "user_and_movies_encoders.pkl"))
 user_encoder = encoders["user_encoder"]
-item_encoder = encoders["item_encoder"]
+
+scaler = joblib.load(os.path.join(path, "scalers", "MovieID", "experiment_3", "minMaxScalerscaler.pkl"))
 
 MF_DIM = 128
 
@@ -49,17 +50,18 @@ ncf_model = keras.models.load_model(
 )
 
 
-def predict_ncf(user: User, movie: Movie) -> float:
+def prepare_ncf_inputs(user: User, movies_df: pd.DataFrame):
     user_key = f"{user.gender}_{user.age}_{user.occupation}_{user.zip_code}"
-
-    if user_key not in user_encoder.classes_:
-        extend_encoder(user_encoder, [user_key])
-
-    if movie.id not in item_encoder.classes_:
-        extend_encoder(item_encoder, [movie.id])
-
     user_idx = user_encoder.transform([user_key])[0]
-    movie_idx = item_encoder.transform([movie.id])[0]
 
-    score = ncf_model.predict([np.array([user_idx]), np.array([movie_idx])], verbose=0)[0][0]
-    return float(score)
+    user_idx_array = np.full(len(movies_df), user_idx, dtype=np.int32)
+
+    movies_df_renamed = movies_df.rename(columns={"movie_id": "MovieID"})
+    movie_idx_array = scaler.transform(movies_df_renamed[["MovieID"]].astype(np.float32)).flatten()
+
+    return user_idx_array, movie_idx_array
+
+
+def predict_ncf(user_idx_array: np.ndarray, movie_idx_array: np.ndarray) -> np.ndarray:
+    preds = ncf_model.predict([user_idx_array, movie_idx_array], verbose=0)
+    return preds.flatten()
