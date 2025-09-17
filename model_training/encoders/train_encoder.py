@@ -4,7 +4,7 @@ import joblib
 import pandas as pd
 from sklearn.calibration import LabelEncoder
 from sklearn.discriminant_analysis import StandardScaler
-from sklearn.preprocessing import OneHotEncoder
+from sklearn.preprocessing import MinMaxScaler, OneHotEncoder
 
 
 def import_df(type: str, path: str) -> pd.DataFrame:
@@ -36,21 +36,23 @@ def train_encoder(save_path: str) -> None:
         encoder = OneHotEncoder()
     elif ENCODER_TYPE == "scalar":
         encoder = StandardScaler()
+    elif ENCODER_TYPE == "minMaxScaler":
+        encoder = MinMaxScaler()
     else:
         raise ValueError("Unsupported encoder type. Use 'label' or 'onehot'.")
 
-    df[TARGET_COLUMN] = encoder.fit_transform(df[FEATURE_COLUMN])
-    joblib.dump(encoder, save_path + f"/{ENCODER_TYPE}_encoder.pkl")
+    df[TARGET_COLUMN] = encoder.fit_transform(df[[FEATURE_COLUMN]])
+    joblib.dump(encoder, save_path + f"/{ENCODER_TYPE}scaler.pkl")
 
 
 if __name__ == "__main__":
     DATASET_PATH = "../../datasets/full_train_dataset_with_embeddings.parquet"
-    SAVE_MODEL_PATH = "../../experiments/encoders"
-    FEATURE_COLUMN = "Occupation"
-    TARGET_COLUMN = "occupation_encoded"
+    SAVE_MODEL_PATH = "../../experiments/scalers"
+    FEATURE_COLUMN = "MovieID"
+    TARGET_COLUMN = "movie_id_scaled"
 
     DATASET_TYPE = "parquet"
-    ENCODER_TYPE = "label"
+    ENCODER_TYPE = "minMaxScaler"
     df = import_df(DATASET_TYPE, DATASET_PATH)
     df.dropna(inplace=True)
     if ENCODER_TYPE == "scalar" and FEATURE_COLUMN == "Timestamp":

@@ -5,7 +5,7 @@ from matplotlib import pyplot as plt
 import tensorflow as tf
 import pandas as pd
 import numpy as np
-from sklearn.preprocessing import LabelEncoder
+from sklearn.preprocessing import LabelEncoder, MinMaxScaler
 from sklearn.model_selection import train_test_split
 from ExperimentConfig import ExperimentConfig
 import os
@@ -45,9 +45,12 @@ def create_ids(
 
     user_encoder = LabelEncoder()
     df["user_id"] = user_encoder.fit_transform(df["user_key"])
-    item_encoder = LabelEncoder()
-    df["item_id"] = item_encoder.fit_transform(df["MovieID"])
-    return df, user_encoder, item_encoder
+    scaler = joblib.load(
+        f"../../experiments/scalers/MovieID/experiment_3/minMaxScalerscaler.pkl"
+    )
+
+    df["item_id"] = scaler.transform(df[["MovieID"]])
+    return df, user_encoder, scaler
 
 
 def mf_slice(x):
