@@ -1,0 +1,22 @@
+{
+  "experiment_number": 10,
+  "epochs": 250,
+  "batch_size": 512,
+  "verbose": 1,
+  "mf_dim": 128,
+  "model_layers": [
+    64,
+    32,
+    16,
+    8
+  ],
+  "mlp_reg_layers": [
+    0,
+    0,
+    0,
+    0
+  ],
+  "embeddings_initializer": "uniform",
+  "embeddings_regularizer": "l2",
+  "mf_regularization": 0.0001
+}

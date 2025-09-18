@@ -10,12 +10,10 @@ from app.db.models.user import User
 
 path = os.path.dirname(__file__)
 
-NCF_MODEL_PATH = os.path.join(path, "ncf", "experiment_7/model.keras")
+NCF_MODEL_PATH = os.path.join(path, "ncf", "experiment_10", "model.keras")
 
-encoders = joblib.load(os.path.join(path, "ncf", "experiment_7", "encoders", "user_and_movies_encoders.pkl"))
-user_encoder = encoders["user_encoder"]
-
-scaler = joblib.load(os.path.join(path, "scalers", "MovieID", "experiment_3", "minMaxScalerscaler.pkl"))
+movie_scaler = joblib.load(os.path.join(path, "scalers", "MovieID", "experiment_3", "minMaxScalerscaler.pkl"))
+user_scaler = joblib.load(os.path.join(path, "scalers", "UserID", "experiment_4", "minMaxScalerscaler.pkl"))
 
 MF_DIM = 128
 
@@ -50,14 +48,13 @@ ncf_model = keras.models.load_model(
 )
 
 
-def prepare_ncf_inputs(user: User, movies_df: pd.DataFrame):
-    user_key = f"{user.gender}_{user.age}_{user.occupation}_{user.zip_code}"
-    user_idx = user_encoder.transform([user_key])[0]
+def prepare_ncf_inputs(movies_df: pd.DataFrame):
+    movies_df_renamed = movies_df.rename(columns={"movie_id": "MovieID", "user_id": "UserID"})
+    user_idx = user_scaler.transform(movies_df_renamed[["UserID"]].astype(np.float32))[0][0]
 
     user_idx_array = np.full(len(movies_df), user_idx, dtype=np.int32)
 
-    movies_df_renamed = movies_df.rename(columns={"movie_id": "MovieID"})
-    movie_idx_array = scaler.transform(movies_df_renamed[["MovieID"]].astype(np.float32)).flatten()
+    movie_idx_array = movie_scaler.transform(movies_df_renamed[["MovieID"]].astype(np.float32)).flatten()
 
     return user_idx_array, movie_idx_array
 

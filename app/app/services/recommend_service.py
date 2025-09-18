@@ -57,7 +57,7 @@ class RecommendService:
         mlp_preds = predict_mlp([u_mat, m_mat, e_mat])
         movies_df["mlp_score"] = mlp_preds
 
-        user_idx_array, movie_idx_array = prepare_ncf_inputs(user, movies_df)
+        user_idx_array, movie_idx_array = prepare_ncf_inputs(movies_df)
         ncf_preds = predict_ncf(user_idx_array, movie_idx_array)
         movies_df["ncf_score"] = ncf_preds
 
