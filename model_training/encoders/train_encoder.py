@@ -48,8 +48,8 @@ def train_encoder(save_path: str) -> None:
 if __name__ == "__main__":
     DATASET_PATH = "../../datasets/full_train_dataset_with_embeddings.parquet"
     SAVE_MODEL_PATH = "../../experiments/scalers"
-    FEATURE_COLUMN = "MovieID"
-    TARGET_COLUMN = "movie_id_scaled"
+    FEATURE_COLUMN = "UserID"
+    TARGET_COLUMN = "user_id_scaled"
 
     DATASET_TYPE = "parquet"
     ENCODER_TYPE = "minMaxScaler"

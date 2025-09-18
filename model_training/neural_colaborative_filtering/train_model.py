@@ -33,24 +33,26 @@ def form_save_path() -> tuple[str, int]:
 def create_ids(
     df: pd.DataFrame, save_path: str
 ) -> tuple[pd.DataFrame, LabelEncoder, LabelEncoder]:
-    df["user_key"] = (
-        df["Gender"].astype(str)
-        + "_"
-        + df["Age"].astype(str)
-        + "_"
-        + df["Occupation"].astype(str)
-        + "_"
-        + df["Zip-code"].astype(str)
-    )
+    # df["user_key"] = (
+    #     df["Gender"].astype(str)
+    #     + "_"
+    #     + df["Age"].astype(str)
+    #     + "_"
+    #     + df["Occupation"].astype(str)
+    #     + "_"
+    #     + df["Zip-code"].astype(str)
+    # )
 
-    user_encoder = LabelEncoder()
-    df["user_id"] = user_encoder.fit_transform(df["user_key"])
-    scaler = joblib.load(
+    user_scaler = joblib.load(
+        f"../../experiments/scalers/UserID/experiment_4/minMaxScalerscaler.pkl"
+    )
+    df["user_id"] = user_scaler.fit_transform(df[["UserID"]])
+    movie_scaler = joblib.load(
         f"../../experiments/scalers/MovieID/experiment_3/minMaxScalerscaler.pkl"
     )
 
-    df["item_id"] = scaler.transform(df[["MovieID"]])
-    return df, user_encoder, scaler
+    df["item_id"] = movie_scaler.transform(df[["MovieID"]])
+    return df, user_scaler, movie_scaler
 
 
 def mf_slice(x):
